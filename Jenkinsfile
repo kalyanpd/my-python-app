@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = "kalyan3599/python"   // Replace with your DockerHub username/repo
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -10,7 +14,19 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t mypythonapp:latest .'
+                sh 'docker build -t $DOCKER_IMAGE:latest .'
+            }
+        }
+
+        stage('Push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: '1234', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push $DOCKER_IMAGE:latest
+                        docker logout
+                    '''
+                }
             }
         }
 
@@ -18,7 +34,7 @@ pipeline {
             steps {
                 sh '''
                     docker rm -f mypythonapp || true
-                    docker run -d -p 5000:5000 --name mypythonapp mypythonapp:latest
+                    docker run -d -p 5000:5000 --name mypythonapp $DOCKER_IMAGE:latest
                 '''
             }
         }
